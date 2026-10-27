@@ -1,0 +1,5 @@
+# dsh bundle patch：注册本机会话 Token 用量统计插件。
+# Host 半侧提供 /api/session-token-stats，浏览器半侧提供侧边栏入口与主面板。
+- insert:
+    - id: session-token-stats
+      name: dsh-session-token-stats
