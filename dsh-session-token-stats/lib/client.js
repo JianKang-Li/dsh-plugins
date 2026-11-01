@@ -323,14 +323,33 @@ window.__ModuleLoader__.load({
       return formatter.format(safeCount(value))
     }
 
-    function formatCompact(value, locale) {
-      const key = `compact:${locale}`
-      let formatter = numberFormats.get(key)
-      if (formatter === undefined) {
-        formatter = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 })
-        numberFormats.set(key, formatter)
+    /** Token 缩写单位，从大到小匹配。 */
+    const TOKEN_UNITS = [
+      [1e15, 'P'],
+      [1e12, 'T'],
+      [1e9, 'B'],
+      [1e6, 'M'],
+      [1e3, 'K'],
+    ]
+
+    /** Token 数自动转换单位：<1000 显示原值，否则按 K/M/B/T/P 缩写，保留 3 位有效数字。 */
+    function formatTokens(value) {
+      const number = safeCount(value)
+      for (const [threshold, suffix] of TOKEN_UNITS) {
+        if (number >= threshold) {
+          const scaled = number / threshold
+          const digits = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2
+          let text = scaled.toFixed(digits)
+          if (text.includes('.')) text = text.replace(/\.?0+$/, '')
+          return `${text}${suffix}`
+        }
       }
-      return formatter.format(safeCount(value))
+      return String(number)
+    }
+
+    /** Token 列单元格：显示缩写，悬停展示精确值。 */
+    function tokenCell(value, locale) {
+      return h('td', { className: 'stk-num', title: formatNumber(value, locale) }, formatTokens(value))
     }
 
     function promptTokens(usage) {
@@ -537,7 +556,7 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'stk-card-value', title: formatNumber(value, locale) },
-          compact ? formatCompact(value, locale) : formatNumber(value, locale),
+          compact ? formatTokens(value) : formatNumber(value, locale),
         ),
         note ? h('div', { className: 'stk-card-note' }, note) : null,
       )
@@ -579,13 +598,13 @@ window.__ModuleLoader__.load({
             const percent = (total / max) * 100
             const tooltip = [
               `${day.day} (${formatWeekday(day.day, locale)})`,
-              `${text(t, 'summaryTotal')}: ${formatNumber(total, locale)}`,
+              `${text(t, 'summaryTotal')}: ${formatTokens(total)}`,
               `${text(t, 'calls')}: ${formatNumber(day.calls, locale)}`,
-              `${text(t, 'input')}: ${formatNumber(day.inputTokens, locale)}`,
-              `${text(t, 'cacheRead')}: ${formatNumber(day.cacheReadTokens, locale)}`,
-              `${text(t, 'cacheWrite')}: ${formatNumber(day.cacheWriteTokens, locale)}`,
-              `${text(t, 'output')}: ${formatNumber(day.outputTokens, locale)}`,
-              `${text(t, 'summaryReasoning')}: ${formatNumber(day.reasoningTokens, locale)}`,
+              `${text(t, 'input')}: ${formatTokens(day.inputTokens)}`,
+              `${text(t, 'cacheRead')}: ${formatTokens(day.cacheReadTokens)}`,
+              `${text(t, 'cacheWrite')}: ${formatTokens(day.cacheWriteTokens)}`,
+              `${text(t, 'output')}: ${formatTokens(day.outputTokens)}`,
+              `${text(t, 'summaryReasoning')}: ${formatTokens(day.reasoningTokens)}`,
             ].join('\n')
             const segments = [
               ['stk-seg-input', day.inputTokens],
@@ -669,16 +688,16 @@ window.__ModuleLoader__.load({
                   day.day === dayKeyOf(new Date()) ? h('span', { className: 'stk-badge' }, text(t, 'today')) : null,
                 ),
                 h('td', { className: 'stk-num' }, formatNumber(day.calls, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(day.inputTokens, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(day.cacheReadTokens, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(day.cacheWriteTokens, locale)),
+                tokenCell(day.inputTokens, locale),
+                tokenCell(day.cacheReadTokens, locale),
+                tokenCell(day.cacheWriteTokens, locale),
                 h(
                   'td',
                   { className: 'stk-num', title: text(t, 'cacheHitRateHint') },
                   formatPercent(day.cacheReadTokens, promptTokens(day), locale),
                 ),
-                h('td', { className: 'stk-num' }, formatNumber(day.outputTokens, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(day.totalTokens, locale)),
+                tokenCell(day.outputTokens, locale),
+                tokenCell(day.totalTokens, locale),
                 h(ShareCell, { value: day.totalTokens, total, locale }),
               ),
             ),
@@ -687,16 +706,16 @@ window.__ModuleLoader__.load({
               { className: 'stk-total-row' },
               h('td', null, text(t, 'tableTotal')),
               h('td', { className: 'stk-num' }, formatNumber(totals.calls, locale)),
-              h('td', { className: 'stk-num' }, formatNumber(totals.inputTokens, locale)),
-              h('td', { className: 'stk-num' }, formatNumber(totals.cacheReadTokens, locale)),
-              h('td', { className: 'stk-num' }, formatNumber(totals.cacheWriteTokens, locale)),
+              tokenCell(totals.inputTokens, locale),
+              tokenCell(totals.cacheReadTokens, locale),
+              tokenCell(totals.cacheWriteTokens, locale),
               h(
                 'td',
                 { className: 'stk-num', title: text(t, 'cacheHitRateHint') },
                 formatPercent(totals.cacheReadTokens, promptTokens(totals), locale),
               ),
-              h('td', { className: 'stk-num' }, formatNumber(totals.outputTokens, locale)),
-              h('td', { className: 'stk-num' }, formatNumber(totals.totalTokens, locale)),
+              tokenCell(totals.outputTokens, locale),
+              tokenCell(totals.totalTokens, locale),
               h('td', null, total > 0 ? '100%' : '0%'),
             ),
           ),
@@ -738,16 +757,16 @@ window.__ModuleLoader__.load({
                 { key: `${model.provider}\u0000${model.model}` },
                 h('td', { className: 'stk-model-cell', title: modelLabel(model, t) }, modelLabel(model, t)),
                 h('td', { className: 'stk-num' }, formatNumber(model.calls, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(model.inputTokens, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(model.cacheReadTokens, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(model.cacheWriteTokens, locale)),
+                tokenCell(model.inputTokens, locale),
+                tokenCell(model.cacheReadTokens, locale),
+                tokenCell(model.cacheWriteTokens, locale),
                 h(
                   'td',
                   { className: 'stk-num', title: text(t, 'cacheHitRateHint') },
                   formatPercent(model.cacheReadTokens, promptTokens(model), locale),
                 ),
-                h('td', { className: 'stk-num' }, formatNumber(model.outputTokens, locale)),
-                h('td', { className: 'stk-num' }, formatNumber(model.totalTokens, locale)),
+                tokenCell(model.outputTokens, locale),
+                tokenCell(model.totalTokens, locale),
                 h(ShareCell, { value: model.totalTokens, total, locale }),
               ),
             ),
@@ -864,16 +883,16 @@ window.__ModuleLoader__.load({
                         extra === '' ? null : h('div', { className: 'stk-session-sub' }, extra),
                       ),
                       h('td', { className: 'stk-num' }, formatNumber(session.calls, locale)),
-                      h('td', { className: 'stk-num' }, formatNumber(session.inputTokens, locale)),
-                      h('td', { className: 'stk-num' }, formatNumber(session.cacheReadTokens, locale)),
-                      h('td', { className: 'stk-num' }, formatNumber(session.cacheWriteTokens, locale)),
+                      tokenCell(session.inputTokens, locale),
+                      tokenCell(session.cacheReadTokens, locale),
+                      tokenCell(session.cacheWriteTokens, locale),
                       h(
                         'td',
                         { className: 'stk-num', title: text(t, 'cacheHitRateHint') },
                         formatPercent(session.cacheReadTokens, promptTokens(session), locale),
                       ),
-                      h('td', { className: 'stk-num' }, formatNumber(session.outputTokens, locale)),
-                      h('td', { className: 'stk-num' }, formatNumber(session.totalTokens, locale)),
+                      tokenCell(session.outputTokens, locale),
+                      tokenCell(session.totalTokens, locale),
                       h('td', { title: formatDateTime(session.lastAt, locale) }, formatDateTime(session.lastAt, locale)),
                     )
                   }),
