@@ -1,0 +1,5 @@
+# dsh bundle patch：注册会话管理插件。
+# Host 半侧提供删除会话的 /api 路由，浏览器半侧提供会话行菜单项与确认弹窗。
+- insert:
+    - id: session-manager
+      name: dsh-session-manager
