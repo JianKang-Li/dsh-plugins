@@ -1,7 +1,7 @@
 {
   "name": "dsh-session-token-stats",
   "version": "0.1.0",
-  "description": "DeepSeek Harness 本机会话 Token 用量统计插件：按时间筛选并查看每日消耗",
+  "description": "DeepSeek Harness 本机会话 Token 用量统计插件：独立持久化统计，支持按时间查看、删除会话后保留数据，并可清理后重新计数",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

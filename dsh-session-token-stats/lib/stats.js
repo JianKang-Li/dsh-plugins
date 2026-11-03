@@ -7,8 +7,8 @@
  * - session/title 提供标题，user/message 提供无标题时的回退文案
  */
 
-/** 缓存结构版本；字段含义变化时递增，旧缓存会被忽略。 */
-export const CACHE_VERSION = 1
+/** 统计库结构版本；字段含义变化时递增，旧文件会被忽略。 */
+export const STORE_VERSION = 2
 
 /** usage 中参与合计的字段；reasoningTokens 是输出的一部分，不重复计入。 */
 const USAGE_FIELDS = [
@@ -228,11 +228,13 @@ export function normalizeRange(fromValue, toValue) {
  * @param header - SessionHeader（读取 createdAt/cwd/lineage 等元数据）
  * @param events - 完整原始事件日志
  * @param inheritedEventCount - fork 继承的事件前缀长度；这些事件属于父会话，必须跳过
+ * @param sinceMs - 统计起点（毫秒时间戳）；早于它发生的调用不计入
  */
-export function aggregateSession(header, events, inheritedEventCount = 0) {
+export function aggregateSession(header, events, inheritedEventCount = 0, sinceMs = 0) {
   const id = String(header?.id ?? '')
   const createdAt = count(header?.createdAt)
   const inherited = count(inheritedEventCount)
+  const since = Number.isFinite(Number(sinceMs)) && Number(sinceMs) > 0 ? Math.floor(Number(sinceMs)) : 0
   const byDay = {}
   let title = null
   let firstUserText = ''
@@ -278,7 +280,10 @@ export function aggregateSession(header, events, inheritedEventCount = 0) {
         const route = routeOf(event.data?.message?.source) ?? latestRoute
         const provider = route?.provider ?? ''
         const model = route?.model ?? ''
-        const day = localDayKey(at ?? createdAt)
+        const effectiveAt = at ?? createdAt
+        // 清理统计后只累计之后的调用；缺少时间时以会话创建时间判断。
+        if (since > 0 && effectiveAt < since) break
+        const day = localDayKey(effectiveAt)
         if (day === null) break
         const bucket = byDay[day] ?? emptyBucket()
         addUsageToBucket(bucket, usage, provider, model)
@@ -391,6 +396,7 @@ export function aggregateSessions(entries, range = { fromMs: null, toMs: null })
       delegationDepth: count(entry.delegationDepth),
       isSeeded: entry.isSeeded === true,
       live: entry.live === true,
+      deleted: entry.deleted === true,
       firstAt: count(entry.firstAt),
       lastAt: count(entry.lastAt),
       ...numbers,

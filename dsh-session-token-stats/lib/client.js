@@ -18,6 +18,7 @@ window.__ModuleLoader__.load({
     const NS = 'session-token-stats'
     const STYLE_ID = 'dsh-session-token-stats/panel.css'
     const API_PATH = '/api/session-token-stats'
+    const CLEAR_API_PATH = '/api/session-token-stats/clear'
 
     //#region 文案
 
@@ -27,6 +28,14 @@ window.__ModuleLoader__.load({
       subtitle: '统计本机所有会话的模型调用消耗，可按日期查看每日用量。',
       refresh: '刷新',
       refreshing: '刷新中…',
+      clear: '清理统计',
+      clearing: '清理中…',
+      clearTitle: '清理统计数据？',
+      clearConfirmText: '清理后统计归零，只统计之后发生的模型调用，且无法恢复。',
+      clearConfirm: '确认清理',
+      clearCancel: '取消',
+      clearFailed: '清理失败',
+      clearDone: '统计已清理，已开始重新计数。',
       presetAll: '全部',
       presetToday: '今天',
       preset7d: '近 7 天',
@@ -50,13 +59,14 @@ window.__ModuleLoader__.load({
       summaryReasoning: '推理 Token',
       reasoningNote: '推理 Token 是输出的一部分，不重复计入合计。',
       updatedAt: '更新于 {time}',
+      statsSince: '统计起始：{time}',
       timezone: '时区：{zone}',
       loadFailed: '加载失败',
       retry: '重试',
       loading: '正在统计会话用量…',
       filterInvalid: '开始日期不能晚于结束日期',
       rangeRequired: '请选择开始和结束日期',
-      failedSessions: '{count} 个会话读取失败，已跳过。',
+      failedSessions: '{count} 个会话本次读取失败，已保留上次统计结果。',
       dailyTitle: '每日 Token 消耗',
       dailyHint: '按模型调用发生的本地日期统计；没有上报用量的请求不计入。全部时间下跨度较大时只展示有消耗的日期。',
       chartLegendInput: '输入',
@@ -86,11 +96,12 @@ window.__ModuleLoader__.load({
       noTitle: '未命名会话',
       subagent: '子会话',
       live: '运行中',
+      deleted: '已删除',
       lastActivity: '最后活动',
       model: '模型',
       unknownModel: '未知模型',
       tableTotal: '总计',
-      allSessionsNote: '包含主会话与子会话；fork 继承的历史事件已跳过，避免重复计数。',
+      allSessionsNote: '包含主会话与子会话；已删除会话的用量会保留。fork 继承的历史事件已跳过，避免重复计数。',
       moreModels: '另有 {count} 个模型',
       today: '今天',
       sessionColumn: '会话',
@@ -108,6 +119,14 @@ window.__ModuleLoader__.load({
       subtitle: 'Token consumption of every local session, grouped by day.',
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
+      clear: 'Clear stats',
+      clearing: 'Clearing…',
+      clearTitle: 'Clear statistics?',
+      clearConfirmText: 'Statistics are reset to zero, and only model calls made afterwards are counted. This cannot be undone.',
+      clearConfirm: 'Clear',
+      clearCancel: 'Cancel',
+      clearFailed: 'Failed to clear',
+      clearDone: 'Statistics cleared; counting has restarted.',
       presetAll: 'All',
       presetToday: 'Today',
       preset7d: 'Last 7 days',
@@ -131,13 +150,14 @@ window.__ModuleLoader__.load({
       summaryReasoning: 'Reasoning tokens',
       reasoningNote: 'Reasoning tokens are part of output and are not counted twice.',
       updatedAt: 'Updated {time}',
+      statsSince: 'Counting since {time}',
       timezone: 'Time zone: {zone}',
       loadFailed: 'Failed to load',
       retry: 'Retry',
       loading: 'Collecting session usage…',
       filterInvalid: 'The start date must not be after the end date',
       rangeRequired: 'Choose both a start and an end date',
-      failedSessions: '{count} session(s) could not be read and were skipped.',
+      failedSessions: '{count} session(s) could not be read; their last recorded usage is shown.',
       dailyTitle: 'Daily token consumption',
       dailyHint: 'Grouped by the local date of each model call; calls without reported usage are excluded. For long all-time spans, only dates with usage are shown.',
       chartLegendInput: 'Input',
@@ -167,11 +187,12 @@ window.__ModuleLoader__.load({
       noTitle: 'Untitled session',
       subagent: 'Subagent',
       live: 'Live',
+      deleted: 'Deleted',
       lastActivity: 'Last activity',
       model: 'Model',
       unknownModel: 'Unknown model',
       tableTotal: 'Total',
-      allSessionsNote: 'Includes main and subagent sessions; fork-inherited history is skipped to avoid double counting.',
+      allSessionsNote: 'Includes main and subagent sessions; usage from deleted sessions is retained. Fork-inherited history is skipped to avoid double counting.',
       moreModels: '{count} more model(s)',
       today: 'Today',
       sessionColumn: 'Session',
@@ -198,6 +219,8 @@ window.__ModuleLoader__.load({
       '.stk-btn:disabled{opacity:.5;cursor:default}',
       '.stk-btn-primary{background:var(--dsw-alias-brand-primary,#0969da);border-color:var(--dsw-alias-brand-primary,#0969da);color:#fff;font-weight:600}',
       '.stk-btn-primary:hover:not(:disabled){color:#fff;filter:brightness(1.06)}',
+      '.stk-btn-danger{border-color:rgba(207,34,46,.45);color:var(--dsw-alias-state-error-primary,#cf222e)}',
+      '.stk-btn-danger:hover:not(:disabled){border-color:var(--dsw-alias-state-error-primary,#cf222e);color:var(--dsw-alias-state-error-primary,#cf222e);background:rgba(207,34,46,.06)}',
       '.stk-filters{margin-top:16px;padding:12px;border:.5px solid var(--dsw-alias-border-l3,rgba(31,35,40,.1));border-radius:10px;background:var(--dsw-alias-bg-layer-1,#fbfcfd);display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}',
       '.stk-presets{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
       '.stk-chip{border:.5px solid var(--dsw-alias-border-l2,rgba(31,35,40,.16));background:transparent;color:var(--dsw-alias-label-secondary,#57606a);border-radius:999px;padding:4px 10px;font-size:12px;line-height:16px;cursor:pointer}',
@@ -209,9 +232,11 @@ window.__ModuleLoader__.load({
       '.stk-date input{background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1f2328);border:.5px solid var(--dsw-alias-border-l2,rgba(31,35,40,.16));border-radius:6px;padding:5px 7px;font-size:12px;line-height:16px;min-width:132px;color-scheme:light dark}',
       '.stk-date input:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#0969da);outline-offset:1px}',
       '.stk-meta{margin-top:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary,#6e7781)}',
-      '.stk-banner{margin-top:12px;border-radius:8px;padding:8px 10px;font-size:12px;line-height:18px;display:flex;align-items:center;justify-content:space-between;gap:10px}',
+      '.stk-banner{margin-top:12px;border-radius:8px;padding:8px 10px;font-size:12px;line-height:18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}',
       '.stk-banner-error{border:.5px solid var(--dsw-alias-state-error-primary,#cf222e);background:rgba(207,34,46,.06);color:var(--dsw-alias-state-error-primary,#cf222e)}',
       '.stk-banner-warn{border:.5px solid var(--dsw-alias-state-warning-primary,#9a6700);background:rgba(154,103,0,.07);color:var(--dsw-alias-state-warning-primary,#9a6700)}',
+      '.stk-banner-ok{border:.5px solid var(--dsw-alias-state-success-primary,#1a7f37);background:rgba(26,127,55,.08);color:var(--dsw-alias-state-success-primary,#1a7f37)}',
+      '.stk-banner-actions{display:flex;align-items:center;gap:8px;flex:none}',
       '.stk-cards{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px}',
       '.stk-card{border:.5px solid var(--dsw-alias-border-l3,rgba(31,35,40,.1));background:var(--dsw-alias-bg-layer-1,#fbfcfd);border-radius:10px;padding:11px 12px;min-width:0}',
       '.stk-card-accent{border-color:var(--dsw-alias-brand-primary,#0969da);background:rgba(9,105,218,.05)}',
@@ -262,6 +287,7 @@ window.__ModuleLoader__.load({
       '.stk-badge{display:inline-flex;align-items:center;border-radius:999px;padding:0 6px;font-size:10px;line-height:16px;font-weight:500;background:var(--dsw-alias-bg-layer-2,#f6f8fa);color:var(--dsw-alias-label-secondary,#57606a);margin-left:6px;vertical-align:1px}',
       '.stk-badge-live{background:rgba(47,191,143,.14);color:#1a7f5a}',
       '.stk-badge-sub{background:rgba(160,107,255,.14);color:#7a4bd6}',
+      '.stk-badge-deleted{background:rgba(207,34,46,.12);color:var(--dsw-alias-state-error-primary,#cf222e)}',
       '.stk-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
       '.stk-search{background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1f2328);border:.5px solid var(--dsw-alias-border-l2,rgba(31,35,40,.16));border-radius:6px;padding:5px 8px;font-size:12px;line-height:16px;min-width:220px}',
       '.stk-search:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#0969da);outline-offset:1px}',
@@ -873,6 +899,7 @@ window.__ModuleLoader__.load({
                           title,
                           session.live ? h('span', { className: 'stk-badge stk-badge-live' }, text(t, 'live')) : null,
                           session.origin === 'subagent' ? h('span', { className: 'stk-badge stk-badge-sub' }, text(t, 'subagent')) : null,
+                          session.deleted ? h('span', { className: 'stk-badge stk-badge-deleted' }, text(t, 'deleted')) : null,
                         ),
                         h('div', { className: 'stk-session-sub', title: subtitle }, subtitle),
                       ),
@@ -916,6 +943,10 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(true)
       const [error, setError] = useState(null)
       const [reloadToken, setReloadToken] = useState(0)
+      const [confirmClear, setConfirmClear] = useState(false)
+      const [clearing, setClearing] = useState(false)
+      const [clearError, setClearError] = useState(null)
+      const [cleared, setCleared] = useState(false)
 
       useEffect(() => {
         const controller = new AbortController()
@@ -950,6 +981,14 @@ window.__ModuleLoader__.load({
           })
         return () => controller.abort()
       }, [range, reloadToken])
+
+      useEffect(() => {
+        if (!cleared) {
+          return undefined
+        }
+        const timer = setTimeout(() => setCleared(false), 6000)
+        return () => clearTimeout(timer)
+      }, [cleared])
 
       const days = useMemo(() => buildDaySeries(data), [data])
       const totals = data?.totals ?? {
@@ -989,6 +1028,47 @@ window.__ModuleLoader__.load({
       }, [draftFrom, draftTo, t])
 
       const refresh = useCallback(() => setReloadToken((value) => value + 1), [])
+
+      const openClearConfirm = useCallback(() => {
+        setConfirmClear(true)
+        setClearError(null)
+      }, [])
+
+      const cancelClear = useCallback(() => {
+        setConfirmClear(false)
+        setClearError(null)
+      }, [])
+
+      const clearStats = useCallback(async () => {
+        if (clearing) {
+          return
+        }
+        setClearing(true)
+        setClearError(null)
+        try {
+          const response = await fetch(CLEAR_API_PATH, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json', accept: 'application/json' },
+            body: JSON.stringify({}),
+          })
+          const body = await response.json().catch(() => null)
+          if (!response.ok || body === null || body.ok !== true) {
+            const detail = body?.error?.message
+            throw new Error(typeof detail === 'string' && detail !== '' ? detail : `HTTP ${response.status}`)
+          }
+          setConfirmClear(false)
+          setCleared(true)
+          // 清空后先撤掉旧数据，避免刷新失败时仍显示清理前的数字。
+          setData(null)
+          setReloadToken((value) => value + 1)
+        } catch (reason) {
+          setClearError(String(reason?.message ?? reason))
+        } finally {
+          setClearing(false)
+        }
+      }, [clearing])
+
       const shownRange = data?.range ?? range
       const warning = safeCount(data?.scanned?.failed)
 
@@ -1009,11 +1089,56 @@ window.__ModuleLoader__.load({
             { className: 'stk-head-actions' },
             h(
               'button',
-              { className: 'stk-btn', type: 'button', onClick: refresh, disabled: busy },
+              { className: 'stk-btn', type: 'button', onClick: refresh, disabled: busy || clearing },
               busy ? text(t, 'refreshing') : text(t, 'refresh'),
+            ),
+            h(
+              'button',
+              {
+                className: 'stk-btn stk-btn-danger',
+                type: 'button',
+                onClick: openClearConfirm,
+                disabled: busy || clearing || confirmClear,
+              },
+              clearing ? text(t, 'clearing') : text(t, 'clear'),
             ),
           ),
         ),
+        confirmClear
+          ? h(
+              'div',
+              { className: 'stk-banner stk-banner-warn' },
+              h(
+                'span',
+                null,
+                h('strong', null, text(t, 'clearTitle')),
+                ' ',
+                text(t, 'clearConfirmText'),
+              ),
+              h(
+                'div',
+                { className: 'stk-banner-actions' },
+                h(
+                  'button',
+                  { className: 'stk-btn', type: 'button', onClick: cancelClear, disabled: clearing },
+                  text(t, 'clearCancel'),
+                ),
+                h(
+                  'button',
+                  { className: 'stk-btn stk-btn-danger', type: 'button', onClick: clearStats, disabled: clearing },
+                  clearing ? text(t, 'clearing') : text(t, 'clearConfirm'),
+                ),
+              ),
+            )
+          : null,
+        cleared ? h('div', { className: 'stk-banner stk-banner-ok', role: 'status' }, text(t, 'clearDone')) : null,
+        clearError === null
+          ? null
+          : h(
+              'div',
+              { className: 'stk-banner stk-banner-error', role: 'alert' },
+              `${text(t, 'clearFailed')}: ${clearError}`,
+            ),
         h(
           'div',
           { className: 'stk-filters' },
@@ -1068,6 +1193,9 @@ window.__ModuleLoader__.load({
           { className: 'stk-meta' },
           h('span', null, rangeText(shownRange, t)),
           data === null ? null : h('span', null, text(t, 'updatedAt', { time: formatTime(data.generatedAt, locale) })),
+          data === null || safeCount(data.resetAt) === 0
+            ? null
+            : h('span', null, text(t, 'statsSince', { time: formatDateTime(data.resetAt, locale) })),
           data === null ? null : h('span', null, text(t, 'timezone', { zone: data.timeZone })),
         ),
         filterError === null ? null : h('div', { className: 'stk-banner stk-banner-error' }, filterError),

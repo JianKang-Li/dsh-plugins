@@ -140,3 +140,24 @@ test('normalizeRange 拒绝非法日期和倒置范围', () => {
   assert.equal(range.ok, true)
   assert.equal(range.toMs - range.fromMs, 2 * 24 * 60 * 60 * 1000)
 })
+
+test('aggregateSession 只累计统计起点之后的调用', () => {
+  const { header, events } = fixture()
+  const entry = aggregateSession(header, events, 1, day2)
+
+  assert.deepEqual(Object.keys(entry.byDay), [key2])
+  assert.equal(entry.byDay[key2].calls, 1)
+  assert.equal(entry.byDay[key2].totalTokens, 12)
+})
+
+test('aggregateSessions 保留已删除会话并透传 deleted 标记', () => {
+  const { header, events } = fixture()
+  const live = aggregateSession(header, events, 1)
+  const orphan = { ...live, id: 'session-deleted', title: '已删除会话', deleted: true }
+  const result = aggregateSessions([live, orphan], { fromMs: null, toMs: null })
+
+  assert.equal(result.totals.sessions, 2)
+  assert.equal(result.totals.totalTokens, 334)
+  assert.equal(result.sessions.find((session) => session.id === 'session-test').deleted, false)
+  assert.equal(result.sessions.find((session) => session.id === 'session-deleted').deleted, true)
+})
