@@ -1,0 +1,5 @@
+# dsh bundle patch：注册本地 Git 差异面板。
+# Host 半侧提供只读的 /api 差异路由，浏览器半侧提供右侧栏标签页。
+- insert:
+    - id: git-diff
+      name: dsh-git-diff
