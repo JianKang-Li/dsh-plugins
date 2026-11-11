@@ -1,6 +1,6 @@
 # dsh-session-manager
 
-DeepSeek Harness（DSH）会话管理插件。它在 Web GUI 侧边栏的会话行「…」菜单里新增「删除会话」，二次确认后永久删除该会话的本地数据。
+DeepSeek Harness（DSH）会话管理插件。它在 Web GUI 侧边栏的会话行「…」菜单里新增「删除会话」，二次确认后永久删除该会话的本地数据；同时在侧边栏提供「会话管理」面板入口，面板里可以开启「未归档会话优先」，让已归档会话排在所在分组的末尾。
 
 ## 功能
 
@@ -9,7 +9,16 @@ DeepSeek Harness（DSH）会话管理插件。它在 Web GUI 侧边栏的会话�
 - 删除成功后刷新会话列表，让该会话立即从所属工作区移除
 - 正在当前窗口打开的会话会在提交前被拦下，提示先切换到其他会话
 - 失败时就地显示原因，弹窗保留以便重试
+- 侧边栏「会话管理」面板：一个「未归档会话优先」开关，关闭时恢复 DSH 的原始顺序
 - 中文 / English 双语界面，跟随 DSH 当前语言
+
+## 未归档会话优先
+
+开启后，侧边栏里已归档的会话会排到所在分组的末尾，未归档会话保持原有顺序靠前显示。这个开关：
+
+- 默认开启；选择保存在浏览器 `localStorage` 的 `dsh.session-manager.archived-last` 键
+- 只改变侧边栏里的**视觉位置**，不改变归档状态、会话数据或 DSH 保存的排序
+- 通过 CSS `order` 实现，不改动 DSH 管理的 DOM 顺序，避免与列表动画、拖拽冲突
 
 ## 删除范围
 
@@ -37,6 +46,8 @@ DeepSeek Harness（DSH）会话管理插件。它在 Web GUI 侧边栏的会话�
 
 ## 已知限制
 
+- 未归档优先只改视觉顺序：DSH 的 DOM 顺序仍是原始顺序，Tab 键仍按原顺序落到会话行，读屏顺序也不变；拖拽落位按 DSH 的原始顺序计算
+- 该排序依赖 DSH 侧边栏的 DOM 结构（`[role="tree"]`、`data-row-key`、归档行的 `archived` 类名或 `aria-description`）和 CSS `:has`；DSH 升级导致结构变化时排序会失效，但不影响删除功能
 - Host 会把打开过的会话长期留在内存里，因此“已加载但空闲”的会话允许删除；如果另一个浏览器窗口正打开该会话，之后在其中发送的消息只存在于该窗口，不会写回已删除的日志
 - 删除只清理磁盘数据，不会把会话从 Host 内存中卸载：`session/list` 仍会返回该会话，侧边栏行会继续留在「未分组」里，直到重启 DSH 才消失；此时日志已删除，继续使用该会话可能失败
 - 只删除目标会话本身：它的子代理会话日志不会级联删除，附件是内容寻址的共享存储，也不随会话删除
@@ -66,7 +77,7 @@ Windows 上把 `link:` 后的路径写成 `C:/绝对路径/dsh-session-manager`�
 - profile 开启 HMR 时，配置变化会触发热重载，无需重启；
 - 如果没有出现菜单项，重启 `dsh --profile web` 后刷新页面。
 
-安装后打开 Web GUI，在会话行悬停出现的「…」菜单中选择「删除会话」即可。
+安装后打开 Web GUI：在会话行悬停出现的「…」菜单中选择「删除会话」；或在侧边栏的「会话管理」面板里切换「未归档会话优先」。
 
 ## 卸载
 
@@ -92,7 +103,8 @@ content-type: application/json
 ## 兼容性
 
 - 针对 DSH `0.2.1-rc.5` 开发，`dsh.compatibility.dsh` 声明为 `>=0.2.1-rc.2 <0.3.0`。
-- 依赖 Host 侧的 `sessionPersistence` 与 `connection` 服务，并可选读取 Agent 注册表和 Workspace 注册表；浏览器侧依赖 `slots`、`locale`、`sessions` 服务和 `shell.overlay`、`sidebar.workspaces.session.menu.item` 两个插槽。
+- 依赖 Host 侧的 `sessionPersistence` 与 `connection` 服务，并可选读取 Agent 注册表和 Workspace 注册表；浏览器侧依赖 `slots`、`locale`、`sessions` 服务和 `shell.overlay`、`main`、`sidebar.panellist`、`sidebar.workspaces.session.menu.item` 插槽。
+- 「未归档会话优先」额外依赖 DSH 侧边栏会话树的 DOM 结构与 `:has` 选择器，详见「已知限制」。
 - 仅适用于 Web profile；不提供终端或 headless 界面。
 
 ## 跨平台
@@ -119,6 +131,6 @@ npm test
 | --- | --- |
 | `lib/index.js` | Host 插件：校验、Workspace 记账清理、删除日志目录与投影缓存、注册 `/api/session-manager/delete` |
 | `lib/delete-target.js` | 纯路径校验：把日志路径收敛成可删除的会话目录，并确认真实路径未逃逸会话根 |
-| `lib/client.js` | 浏览器插件：会话行菜单项、确认弹窗、失败提示与列表刷新 |
+| `lib/client.js` | 浏览器插件：会话管理面板与排序开关、会话行菜单项、确认弹窗、失败提示与列表刷新 |
 | `test/delete-target.test.mjs` | 路径校验的接受与拒绝用例 |
 | `cordis.patch.yml` | bundle patch，注册 Host 行 |
