@@ -1,6 +1,6 @@
 {
   "name": "dsh-git-diff",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness 右侧栏本地 Git 差异面板：已暂存 / 未暂存 / 未跟踪 / 相对 HEAD",
   "type": "module",
   "main": "lib/index.js",
