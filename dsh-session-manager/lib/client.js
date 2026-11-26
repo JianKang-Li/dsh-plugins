@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const { useSyncExternalStore } = React
     const primitives = require('@deepseek-ai/dsh-client-ui-primitives')
-    const { Button, IconSlidersTwoOutlineRegular, IconTrashOutlineRegular, IconWarningOutlineRegular, MenuItemButton, Modal, Switch } = primitives
+    const { Button, IconFolderCloseRegular, IconSlidersTwoOutlineRegular, IconTrashOutlineRegular, IconWarningOutlineRegular, MenuItemButton, Modal, Switch } = primitives
 
     const NS = 'session-manager'
     const STYLE_ID = 'dsh-session-manager/dialog.css'
@@ -42,11 +42,15 @@ window.__ModuleLoader__.load({
       'error.failedDetail': '删除失败：{message}',
       'panel.label': '会话管理',
       'panel.title': '会话管理',
-      'panel.subtitle': '调整侧边栏会话的显示顺序，并查看删除会话的入口。',
+      'panel.subtitle': '调整侧边栏会话的显示顺序，控制输入框下方的工作目录，并查看删除会话的入口。',
       'panel.order.title': '未归档会话优先',
       'panel.order.hint': '开启后，已归档会话会排在所在分组的末尾。只改变侧边栏里的显示位置，不改变归档状态和会话数据。',
       'panel.delete.title': '删除会话',
       'panel.delete.hint': '在会话行的「…」菜单中选择「删除会话」，确认后会永久删除该会话的本地数据。',
+      'panel.cwd.title': '工作目录',
+      'panel.cwd.setting': '在输入框下方显示工作目录',
+      'panel.cwd.hint': '在输入框卡片下方常驻显示当前会话的工作目录。关闭后这一行不再显示。',
+      'cwd.tooltip': '工作目录：{path}',
     }
 
     const en = {
@@ -68,13 +72,19 @@ window.__ModuleLoader__.load({
       'error.failedDetail': 'Delete failed: {message}',
       'panel.label': 'Session manager',
       'panel.title': 'Session manager',
-      'panel.subtitle': 'Adjust how sessions are ordered in the sidebar and find the delete action.',
+      'panel.subtitle':
+        'Adjust how sessions are ordered in the sidebar, control the working directory below the message box, and find the delete action.',
       'panel.order.title': 'Unarchived sessions first',
       'panel.order.hint':
         'When on, archived sessions move to the end of their group. This only changes their position in the sidebar; the archive state and session data stay the same.',
       'panel.delete.title': 'Delete sessions',
       'panel.delete.hint':
         'Choose “Delete session” from a session row’s “…” menu; confirming permanently removes that session’s local data.',
+      'panel.cwd.title': 'Working directory',
+      'panel.cwd.setting': 'Show the working directory below the message box',
+      'panel.cwd.hint':
+        'Keeps the current session’s working directory below the message box. When off, the path is hidden.',
+      'cwd.tooltip': 'Working directory: {path}',
     }
 
     //#endregion
@@ -98,6 +108,11 @@ window.__ModuleLoader__.load({
 .dsm-setting-title{margin:0;font-size:13px;line-height:20px;font-weight:500}
 .dsm-setting-hint{margin:3px 0 0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}
 .dsm-setting-control{flex:none;padding-top:2px}
+/* 输入框下方的常驻工作目录：只占用统计读数之外的空闲宽度（flex-basis 0 + grow 1），
+   因此不会挤压 DSH 自带的统计读数；空间不足时先省略路径，完整路径放在 title 里。 */
+.dsm-cwd{display:inline-flex;flex:1 0 0;max-width:max-content;min-width:0;overflow:hidden;align-items:center;justify-content:flex-end;gap:6px;padding:1px 8px;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));white-space:nowrap}
+.dsm-cwdIcon{flex:none}
+.dsm-cwdText{min-width:0;overflow:hidden;text-overflow:ellipsis}
 /* 归档置底：只改视觉顺序，不动 React 管理的 DOM 与数据顺序，避免和列表动画、拖拽冲突。 */
 html[data-dsm-archived-last] [role="tree"] div:has(> :is(span,div) > [data-row-key^="workspace:"]),
 html[data-dsm-archived-last] [role="tree"]:has(> :is(span,div) > [data-row-key^="session:"]){display:flex;flex-direction:column}
@@ -152,6 +167,58 @@ html[data-dsm-archived-last] [role="tree"] [data-row-key^="overflow:"]{order:2}
         // 隐私模式下写入失败只影响下次启动的默认值。
       }
     }
+
+    //#endregion
+
+    //#region 工作目录偏好
+
+    const PREF_SHOW_CWD = 'dsh.session-manager.show-cwd'
+
+    /** 未设置时默认开启：面板与输入框下方同时读取这一个偏好。 */
+    function readShowCwd() {
+      if (typeof window === 'undefined') return true
+      try {
+        const stored = window.localStorage.getItem(PREF_SHOW_CWD)
+        return stored === null ? true : stored === 'true'
+      } catch {
+        return true
+      }
+    }
+
+    function saveShowCwd(enabled) {
+      if (typeof window === 'undefined') return
+      try {
+        window.localStorage.setItem(PREF_SHOW_CWD, String(enabled))
+      } catch {
+        // 隐私模式下写入失败只影响下次启动的默认值。
+      }
+    }
+
+    /** 面板开关与输入框条目分属两个插槽，用共享 store 让改动立即生效。 */
+    function createPreferenceStore(initial, persist) {
+      let value = initial
+      const listeners = new Set()
+      const emit = () => {
+        for (const listener of listeners) listener()
+      }
+      return {
+        get: () => value,
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return () => {
+            listeners.delete(listener)
+          }
+        },
+        set: (next) => {
+          if (next === value) return
+          value = next
+          persist(next)
+          emit()
+        },
+      }
+    }
+
+    const showCwdStore = createPreferenceStore(readShowCwd(), saveShowCwd)
 
     //#endregion
 
@@ -346,6 +413,25 @@ html[data-dsm-archived-last] [role="tree"] [data-row-key^="overflow:"]{order:2}
       )
     }
 
+    function WorkingDirectorySetting({ t }) {
+      const enabled = useSyncExternalStore(showCwdStore.subscribe, showCwdStore.get)
+      return h(
+        'div',
+        { className: 'dsm-setting' },
+        h(
+          'div',
+          { className: 'dsm-setting-text' },
+          h('p', { className: 'dsm-setting-title' }, t('panel.cwd.setting')),
+          h('p', { className: 'dsm-setting-hint' }, t('panel.cwd.hint')),
+        ),
+        h(
+          'div',
+          { className: 'dsm-setting-control' },
+          h(Switch, { checked: enabled, label: t('panel.cwd.setting'), onChange: (next) => showCwdStore.set(next) }),
+        ),
+      )
+    }
+
     function SessionManagerPage({ t }) {
       return h(
         'div',
@@ -361,9 +447,38 @@ html[data-dsm-archived-last] [role="tree"] [data-row-key^="overflow:"]{order:2}
         h(
           'section',
           { className: 'dsm-section' },
+          h('h2', { className: 'dsm-section-title' }, t('panel.cwd.title')),
+          h(WorkingDirectorySetting, { t }),
+        ),
+        h(
+          'section',
+          { className: 'dsm-section' },
           h('h2', { className: 'dsm-section-title' }, t('panel.delete.title')),
           h('p', { className: 'dsm-section-hint' }, t('panel.delete.hint')),
         ),
+      )
+    }
+
+    //#endregion
+
+    //#region 输入框工作目录
+
+    /**
+     * 输入框下方常驻显示当前会话的工作目录。
+     * @param {object} props - 插槽属性。
+     * @returns {object | null} React 元素；开关关闭或目录未知时为 null。
+     */
+    function ComposerWorkingDirectory({ sessionId, useSessions, t }) {
+      const enabled = useSyncExternalStore(showCwdStore.subscribe, showCwdStore.get)
+      const cwd = useSessions((state) => state.byId[sessionId]?.cwd)
+      if (!enabled || cwd === undefined || cwd === '') {
+        return null
+      }
+      return h(
+        'span',
+        { className: 'dsm-cwd', title: t('cwd.tooltip', { path: cwd }) },
+        h(IconFolderCloseRegular, { size: 14, className: 'dsm-cwdIcon' }),
+        h('span', { className: 'dsm-cwdText', dir: 'ltr' }, cwd),
       )
     }
 
@@ -425,6 +540,18 @@ html[data-dsm-archived-last] [role="tree"] [data-row-key^="overflow:"]{order:2}
             locale: NS,
           },
           DeleteSessionMenuItem,
+        ),
+      )
+
+      ctx.slots.inject('conversation.composer.dock', () =>
+        ctx.slots.register(
+          {
+            name: 'conversation.composer.dock',
+            id: 'session-manager-cwd',
+            order: -1,
+            locale: NS,
+          },
+          ComposerWorkingDirectory,
         ),
       )
 

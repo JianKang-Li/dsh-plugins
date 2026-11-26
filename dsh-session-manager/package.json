@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness 会话管理插件：在侧边栏会话菜单中删除会话数据（带确认弹窗）",
   "type": "module",
   "main": "lib/index.js",
@@ -23,6 +23,7 @@
       "platform": "web",
       "inject": [
         "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-workspace"
       ]

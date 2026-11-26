@@ -1,6 +1,6 @@
 # dsh-session-manager
 
-DeepSeek Harness（DSH）会话管理插件。它在 Web GUI 侧边栏的会话行「…」菜单里新增「删除会话」，二次确认后永久删除该会话的本地数据；同时在侧边栏提供「会话管理」面板入口，面板里可以开启「未归档会话优先」，让已归档会话排在所在分组的末尾。
+DeepSeek Harness（DSH）会话管理插件。它在 Web GUI 侧边栏的会话行「…」菜单里新增「删除会话」，二次确认后永久删除该会话的本地数据；同时在侧边栏提供「会话管理」面板入口，面板里可以开启「未归档会话优先」，让已归档会话排在所在分组的末尾；会话输入框下方还会常驻显示当前会话的工作目录。
 
 ## 功能
 
@@ -10,7 +10,20 @@ DeepSeek Harness（DSH）会话管理插件。它在 Web GUI 侧边栏的会话�
 - 正在当前窗口打开的会话会在提交前被拦下，提示先切换到其他会话
 - 失败时就地显示原因，弹窗保留以便重试
 - 侧边栏「会话管理」面板：一个「未归档会话优先」开关，关闭时恢复 DSH 的原始顺序
+- 侧边栏「会话管理」面板：一个「在输入框下方显示工作目录」开关
+- 输入框下方常驻显示当前会话的工作目录（路径过长时省略，悬停可看完整路径）
 - 中文 / English 双语界面，跟随 DSH 当前语言
+
+## 工作目录显示
+
+输入框下方的统计读数旁会显示当前会话的工作目录，用文件夹图标加绝对路径表示。切换会话时随之更新；宿主没有报告工作目录的会话不显示这一项，也不占用额外高度。
+
+- 在侧边栏「会话管理」面板里用「在输入框下方显示工作目录」开关控制显示，改动立即生效
+- 默认开启；选择保存在浏览器 `localStorage` 的 `dsh.session-manager.show-cwd` 键
+- 位置来自 DSH 的 `conversation.composer.dock` 插槽，也就是输入框卡片下方的常驻区，和上下文占用、速率读数在同一行
+- 只使用统计读数之外的剩余宽度：路径过长时先省略自己，不会挤掉已有的统计读数；窗口窄到没有剩余宽度时这一项自动隐藏
+- 路径超长时末尾省略，完整路径放在原生提示里
+- 只读取会话列表里的 `cwd`，不发起请求，也不改变会话本身
 
 ## 未归档会话优先
 
@@ -103,7 +116,8 @@ content-type: application/json
 ## 兼容性
 
 - 针对 DSH `0.2.1-rc.5` 开发，`dsh.compatibility.dsh` 声明为 `>=0.2.1-rc.2 <0.3.0`。
-- 依赖 Host 侧的 `sessionPersistence` 与 `connection` 服务，并可选读取 Agent 注册表和 Workspace 注册表；浏览器侧依赖 `slots`、`locale`、`sessions` 服务和 `shell.overlay`、`main`、`sidebar.panellist`、`sidebar.workspaces.session.menu.item` 插槽。
+- 依赖 Host 侧的 `sessionPersistence` 与 `connection` 服务，并可选读取 Agent 注册表和 Workspace 注册表；浏览器侧依赖 `slots`、`locale`、`sessions` 服务和 `shell.overlay`、`main`、`sidebar.panellist`、`sidebar.workspaces.session.menu.item`、`conversation.composer.dock` 插槽。
+- 工作目录显示读取 DSH 会话列表行里的 `cwd`，该字段由 Host 列表返回；DSH 不再提供该字段或该插槽时，这一项不再出现，不影响其他功能。
 - 「未归档会话优先」额外依赖 DSH 侧边栏会话树的 DOM 结构与 `:has` 选择器，详见「已知限制」。
 - 仅适用于 Web profile；不提供终端或 headless 界面。
 
@@ -131,6 +145,6 @@ npm test
 | --- | --- |
 | `lib/index.js` | Host 插件：校验、Workspace 记账清理、删除日志目录与投影缓存、注册 `/api/session-manager/delete` |
 | `lib/delete-target.js` | 纯路径校验：把日志路径收敛成可删除的会话目录，并确认真实路径未逃逸会话根 |
-| `lib/client.js` | 浏览器插件：会话管理面板与排序开关、会话行菜单项、确认弹窗、失败提示与列表刷新 |
+| `lib/client.js` | 浏览器插件：会话管理面板与排序开关、会话行菜单项、确认弹窗、失败提示与列表刷新、输入框下方的工作目录 |
 | `test/delete-target.test.mjs` | 路径校验的接受与拒绝用例 |
 | `cordis.patch.yml` | bundle patch，注册 Host 行 |
